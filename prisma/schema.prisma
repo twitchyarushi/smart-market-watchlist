@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String          @id @default(cuid())
+  email      String          @unique
+  createdAt  DateTime        @default(now())
+  watchlist  WatchlistItem[]
+  viewStates UserViewState[]
+}
+
+model Stock {
+  symbol        String          @id
+  name          String
+  sector        String?
+  metrics       DailyMetric[]
+  watchlistedBy WatchlistItem[]
+  viewedBy      UserViewState[]
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  symbol    String
+  date      DateTime
+  price     Float
+  volume    Float
+  source    String   @default("seed")
+  fetchedAt DateTime @default(now())
+
+  @@unique([symbol, date])
+}
+
+model DailyMetric {
+  id          String      @id @default(cuid())
+  symbol      String
+  stock       Stock       @relation(fields: [symbol], references: [symbol])
+  date        DateTime
+  price       Float
+  volume      Float
+  pctChange   Float
+  zScore      Float
+  volumeRatio Float
+  rawTier     Tier
+  streakCount Int         @default(0)
+  displayTier DisplayTier
+  computedAt  DateTime    @default(now())
+
+  @@unique([symbol, date])
+  @@index([symbol, date])
+}
+
+model WatchlistItem {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  symbol  String
+  stock   Stock    @relation(fields: [symbol], references: [symbol])
+  addedAt DateTime @default(now())
+
+  @@unique([userId, symbol])
+}
+
+model UserViewState {
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  symbol       String
+  stock        Stock       @relation(fields: [symbol], references: [symbol])
+  lastSeenAt   DateTime
+  lastSeenTier DisplayTier
+
+  @@id([userId, symbol])
+}
+
+enum Tier {
+  NORMAL
+  WATCH
+  HIGH
+}
+
+enum DisplayTier {
+  NORMAL
+  WATCH
+  NEW_SPIKE
+  SUSTAINED
+  COOLING_OFF
+}
